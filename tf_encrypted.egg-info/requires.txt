@@ -1,0 +1,7 @@
+tensorflow<2,>=1.12.0
+numpy>=1.14.0
+pyyaml>=5.1
+tf-big~=0.1.0
+
+[tf]
+tensorflow<2,>=1.12.0
