@@ -316,10 +316,12 @@ class ABY3(Protocol):
             factory = shares[0][0].factory
             x = [[None, None], [None, None], [None, None]]
             with tf.device(self.servers[0].device_name):
+                print(self.servers[0].device_name)
                 x[0][0] = factory.variable(shares[0][0])
                 x[0][1] = factory.variable(shares[0][1])
 
             with tf.device(self.servers[1].device_name):
+                print(self.servers[0].device_name)
                 x[1][0] = factory.variable(shares[1][0])
                 x[1][1] = factory.variable(shares[1][1])
 
@@ -1232,7 +1234,6 @@ class ABY3(Protocol):
 
         if container is None:
             container = _THISMODULE
-
         func = getattr(container, func_name, None)
         if func is not None:
             return func(self, *args, **kwargs)  # pylint: disable=not-callable
@@ -1578,39 +1579,30 @@ class ABY3PublicTensor(ABY3Tensor):
 
     @property
     def unwrapped(self) -> Tuple[AbstractTensor, ...]:
-        """
-    Unwrap the tensor.
 
-    This will return the value for each of the parties that collectively own
-    the tensor.
+    # .. code-block:: python
 
-    In most cases, this will be the same value on each device.
+    #     x_0, y_0, z_0 = tensor.unwrapped
+    #     # x_0 == 10 with the value pinned to player_0's device.
+    #     # y_0 == 10 with the value pinned to player_1's device.
+    #     # z_0 == 10 with the value pinned to player_2's device.
 
-    .. code-block:: python
+    # .. code-block:: python
 
-        x_0, y_0, z_0 = tensor.unwrapped
-        # x_0 == 10 with the value pinned to player_0's device.
-        # y_0 == 10 with the value pinned to player_1's device.
-        # z_0 == 10 with the value pinned to player_2's device.
+    #     x_0, y_0, z_0= tensor.unwrapped
 
-    In most cases you will want to work on this data on the specified device.
+    #     with tf.device(prot.player_0.device_name):
+    #         # act on x_0
 
-    .. code-block:: python
+    #     with tf.device(prot.player_1.device_name):
+    #         # act on y_0
 
-        x_0, y_0, z_0= tensor.unwrapped
-
-        with tf.device(prot.player_0.device_name):
-            # act on x_0
-
-        with tf.device(prot.player_1.device_name):
-            # act on y_0
-
-        with tf.device(prot.player_2.device_name):
-            # act on z_0
-
-    In most cases you will not need to use this method.  All funtions
-    will hide this functionality for you (e.g. `add`, `mul`, etc).
-    """
+    #     with tf.device(prot.player_2.device_name):
+    #         # act on z_0
+    # """
+    # In most cases you will not need to use this method.  All funtions
+    # will hide this functionality for you (e.g. `add`, `mul`, etc).
+    # """
         return self.values
 
     def decode(self) -> Union[np.ndarray, tf.Tensor]:
@@ -1644,8 +1636,7 @@ class ABY3Constant(ABY3PublicTensor):
 class ABY3PrivateTensor(ABY3Tensor):
     """
   This class represents a private value that may be unknown to everyone.
-  """
-
+  """ 
     dispatch_id = "private"
 
     def __init__(self, prot, shares, is_scaled, share_type):
@@ -2191,6 +2182,7 @@ def _matmul_private_private(prot, x, y):
             )
 
         with tf.device(prot.servers[2].device_name):
+            prot.servers[2].device_name
             z2 = (
                 x_shares[2][0].matmul(y_shares[2][0])
                 + x_shares[2][0].matmul(y_shares[2][1])
@@ -2277,7 +2269,6 @@ def _truncate_private_interactive(
   See protocol TruncPr (3.1) in
     "Secure Computation With Fixed-Point Numbers" by Octavian Catrina and Amitabh
     Saxena, FC'10.
-
   We call it "interactive" to keep consistent with the 2pc setting,
   but in fact, our protocol uses only one round communication, exactly the same as
   that in the "non-interactive" one.

@@ -49,6 +49,7 @@ class LogisticRegression:
     def fit(self, sess, x, y, num_iters):
         fit_batch_op = self.fit_batch(x, y)
         for batch in range(num_iters):
+            print("Batch {0: >4d}".format(batch))
             sess.run(fit_batch_op, tag="fit-batch")
 
     """

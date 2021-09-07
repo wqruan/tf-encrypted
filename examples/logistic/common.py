@@ -122,10 +122,13 @@ class DataOwner:
         self.train_initializer = train_set_iterator.initializer
 
         x, y = train_set_iterator.get_next()
-        x = tf.reshape(x, [self.batch_size, self.num_features])
-        y = tf.reshape(y, [self.batch_size, 1])
-
-        return x, y
+        x = tf.ones(shape=(50, 20))
+        y = tf.ones(shape=(50, 1))
+  
+       # x = tfe.reshape(x, [self.batch_size, self.num_features])
+       # y = tfe.reshape(y, [self.batch_size, 1])
+        
+        return x,y
 
     @tfe.local_computation
     def provide_testing_data(self):
