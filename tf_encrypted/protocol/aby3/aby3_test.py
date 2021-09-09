@@ -602,6 +602,7 @@ class TestABY3(unittest.TestCase):
             sess.run(tfe.global_variables_initializer())
             # reveal result
             result = sess.run(z.reveal())
+            print(z)
             np.testing.assert_allclose(
                 result, np.array([[1, 2, 3], [4, 5, 6]]), rtol=0.0, atol=0.01
             )
