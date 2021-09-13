@@ -1088,6 +1088,7 @@ class ABY3(Protocol):
     def truncate(self, x: "ABY3Tensor"):
         return self.dispatch("truncate", x)
 
+
     @memoize
     def reveal(self, x):
         return self.dispatch("reveal", x)
@@ -2210,7 +2211,7 @@ def _truncate_private(prot: ABY3, x: ABY3PrivateTensor) -> ABY3PrivateTensor:
 
     if prot.fixedpoint_config.use_noninteractive_truncation:
         return _truncate_private_noninteractive(prot, x)
-
+  
     return _truncate_private_interactive(prot, x)
 
 
