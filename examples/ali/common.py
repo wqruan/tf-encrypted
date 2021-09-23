@@ -2,8 +2,8 @@
 logistic regression"""
 import tensorflow as tf
 import tf_encrypted as tfe
-
-
+import numpy as np
+import time
 class LogisticRegression:
   """Contains methods to build and train logistic regression."""
   def __init__(self, num_features):
@@ -74,7 +74,7 @@ class LogisticRegression:
 class DataOwner:
   """Contains code meant to be executed by a data owner Player."""
   def __init__(self, player_name, local_data_file, data_schema,
-           header=False, index=False, field_delim=',', na_values=['nan'], batch_size=128):
+           header=False, index=False, field_delim=',', na_values=['nan'], batch_size=128, num_features = 32, mu = 0, sigma = 1):
     self.player_name = player_name
     self.local_data_file = local_data_file
     self.data_schema = data_schema
@@ -83,6 +83,13 @@ class DataOwner:
     self.index = index
     self.na_values = na_values
     self.field_delim = field_delim
+    self.num_features = num_features
+    self.mu = mu
+    self.sigma = sigma
+    tmp = list(player_name)
+    self.ran = 0
+    for i in range(0, len(tmp)):
+        self.ran += ord(tmp[i])
 
   def provide_data(self):
 
@@ -110,6 +117,9 @@ class DataOwner:
     batch = iterator.get_next()
     batch = tf.reshape(batch, [self.batch_size, self.data_schema.field_num])
     return batch
+  def provide_noise(self):
+    local_noise = tf.random_normal([self.num_features], mean = self.mu, stddev = self.sigma, seed = time.clock() - self.ran)
+    return local_noise;   
 
 class DataSchema:
   def __init__(self, field_types, field_defaults):
