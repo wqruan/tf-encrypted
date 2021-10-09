@@ -1007,6 +1007,7 @@ class ABY3(Protocol):
     def negative(self, x):
         x = self.lift(x)
         return self.dispatch("negative", x)
+  
 
     @memoize
     def mul(self, x, y):
@@ -1097,7 +1098,14 @@ class ABY3(Protocol):
     def B_xor(self, x, y):
         x, y = self.lift(x, y, share_type=BOOLEAN)
         return self.dispatch("B_xor", x, y)
+    @memoize
+    def share_conversion_b_a(self, x):
+        x = self.lift(x, share_type=BOOLEAN)
+        return self.dispatch("share_conversion_b_a", x)
 
+    @memoize
+    def shares_conversion_b_a(self, x):
+        return self.dispatch("shares_conversion_b_a", x)
     @memoize
     def B_and(self, x, y):
         x, y = self.lift(x, y, share_type=BOOLEAN)
@@ -1232,7 +1240,6 @@ class ABY3(Protocol):
             [arg.dispatch_id for arg in args if hasattr(arg, "dispatch_id")]
         )
         func_name = "_{}_{}".format(base_name, suffix)
-
         if container is None:
             container = _THISMODULE
         func = getattr(container, func_name, None)
@@ -1975,6 +1982,8 @@ def _mul_private_public(prot, x, y):
         return z
 
 
+
+
 def _mul_private_private(prot, x, y):
     assert isinstance(x, ABY3PrivateTensor), type(x)
     assert isinstance(y, ABY3PrivateTensor), type(y)
@@ -2404,6 +2413,84 @@ def _B_xor_private_private(prot: ABY3, x: ABY3PrivateTensor, y: ABY3PrivateTenso
             z[2][1] = x.shares[2][1] ^ y.shares[2][1]
 
     return ABY3PrivateTensor(prot, z, x.is_scaled, x.share_type)
+
+
+def _share_conversion_b_a_private(prot, x):
+    assert isinstance(x, ABY3PrivateTensor), type(x)
+    rb1, rb2, rb3 =    prot._gen_zero_sharing(
+            x.shape, share_type=BOOLEAN, factory=x.backing_dtype
+        )
+    ra1, ra2, ra3 = prot._gen_zero_sharing(
+            x.shape, share_type=ARITHMETIC
+        )
+    z = [[None, None], [None, None], [None, None]]
+    res = [[None, None], [None, None], [None, None]]
+    with tf.name_scope("share_conversion_b_a"):
+        with tf.device(prot.servers[0].device_name):
+            z[0][0] = x.shares[0][0] ^ rb1
+            z[0][1] = x.shares[0][1] ^ rb1
+
+        with tf.device(prot.servers[1].device_name):
+            z[1][0] = x.shares[1][0] ^ rb2
+            z[1][1] = x.shares[1][1] ^ rb2
+
+        with tf.device(prot.servers[2].device_name):
+            z[2][0] = x.shares[2][0] ^ rb3
+            z[2][1] = x.shares[2][1] ^ rb3
+
+        z_0 = prot._reconstruct(z, prot.servers[0], BOOLEAN).to_native()
+        z_0 = prot.int_factory.tensor(z_0)
+   
+        with tf.device(prot.servers[0].device_name):
+            res[0][0] = ra1 + z_0 - 2* ra1 * z_0
+            res[0][1] = ra2 - 2* ra2 * z_0
+        with tf.device(prot.servers[1].device_name):
+            res[1][0] = ra2  - 2* ra2 * z_0
+            res[1][1] = ra3 - 2* ra3 * z_0
+        with tf.device(prot.servers[2].device_name):
+            res[2][0] = ra3  - 2* ra3 * z_0
+            res[2][1] = ra1 + z_0 - 2* ra1 * z_0
+    return ABY3PrivateTensor(prot, res, x.is_scaled, ARITHMETIC)
+
+def _shares_conversion_b_a_(prot, x):
+    rb1, rb2, rb3 =    prot._gen_zero_sharing(
+            x[0].shape, share_type=BOOLEAN, factory=x[0].backing_dtype
+        )
+    ra1, ra2, ra3 = prot._gen_zero_sharing(
+            x[0].shape, share_type=ARITHMETIC
+        )
+    results = []
+    with tf.name_scope("shares_conversion_b_a"):
+      for x_0 in x:
+        z = [[None, None], [None, None], [None, None]]
+        res = [[None, None], [None, None], [None, None]]
+        with tf.device(prot.servers[0].device_name):
+            z[0][0] = x_0.shares[0][0] ^ rb1
+            z[0][1] = x_0.shares[0][1] ^ rb1
+
+        with tf.device(prot.servers[1].device_name):
+            z[1][0] = x_0.shares[1][0] ^ rb2
+            z[1][1] = x_0.shares[1][1] ^ rb2
+
+        with tf.device(prot.servers[2].device_name):
+            z[2][0] = x_0.shares[2][0] ^ rb3
+            z[2][1] = x_0.shares[2][1] ^ rb3
+
+        z_0 = prot._reconstruct(z, prot.servers[0], BOOLEAN).to_native()
+        z_0 = prot.int_factory.tensor(z_0)
+   
+        with tf.device(prot.servers[0].device_name):
+            res[0][0] = ra1 + z_0 - 2* ra1 * z_0
+            res[0][1] = ra2 - 2* ra2 * z_0
+        with tf.device(prot.servers[1].device_name):
+            res[1][0] = ra2  - 2* ra2 * z_0
+            res[1][1] = ra3 - 2* ra3 * z_0
+        with tf.device(prot.servers[2].device_name):
+            res[2][0] = ra3  - 2* ra3 * z_0
+            res[2][1] = ra1 + z_0 - 2* ra1 * z_0
+        results.append(ABY3PrivateTensor(prot, res, x[0].is_scaled, ARITHMETIC))
+    return results    
+
 
 
 def _B_xor_private_public(prot: ABY3, x: ABY3PrivateTensor, y: ABY3PublicTensor):
