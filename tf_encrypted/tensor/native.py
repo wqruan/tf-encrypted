@@ -172,6 +172,21 @@ def native_factory(
             value = sampler(shape=shape, minval=0, maxval=maxval, dtype=NATIVE_TYPE)
             return DenseTensor(value)
 
+        def sample_seeded_bounded(self, shape, seed, bitlength: int):
+            maxval = 2 ** bitlength
+            assert maxval <= self.max
+
+            if secure_random.supports_seeded_randomness():
+                seed = secure_random.secure_seed()
+                return UniformTensor(shape=shape, seed=seed, minval=0, maxval=maxval)
+
+            if secure_random.supports_secure_randomness():
+                sampler = secure_random.random_uniform
+            else:
+                sampler = tf.random_uniform
+            value = sampler(shape=shape, minval=0, maxval=maxval, dtype=NATIVE_TYPE)
+            return DenseTensor(value)
+
         def sample_bits(self, shape):
             return self.sample_bounded(shape, bitlength=1)
 
@@ -350,6 +365,9 @@ def native_factory(
         def reshape(self, axes: Union[tf.Tensor, List[int]]):
             return DenseTensor(tf.reshape(self.value, axes))
 
+
+        def diag(self):
+            return DenseTensor(tf.diag(self.value))
         def negative(self):
             value = tf.negative(self.value)
             if EXPLICIT_MODULUS is not None:

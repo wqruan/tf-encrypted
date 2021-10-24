@@ -54,7 +54,7 @@ def memoize(func: Callable) -> Callable:
         cached_result = nodes.get(node_key, None)
         if cached_result is not None:
             return cached_result
-
+       
         result = func(self, *args, **kwargs)
 
         nodes[node_key] = result

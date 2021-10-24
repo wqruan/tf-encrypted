@@ -1059,6 +1059,9 @@ class ABY3(Protocol):
         assert x.share_type is BOOLEAN
         return self.dispatch("xor_indices", x)
 
+    def diag(self, x):
+        return self.dispatch("diag", x)
+
     @memoize
     def transpose(self, x, perm=None):
         x = self.lift(x)
@@ -1106,6 +1109,11 @@ class ABY3(Protocol):
     @memoize
     def shares_conversion_b_a(self, x):
         return self.dispatch("shares_conversion_b_a", x)
+
+    @memoize
+    def inverse_sqrt(self, x):
+        return self.dispatch("inverse_sqrt", x)
+
     @memoize
     def B_and(self, x, y):
         x, y = self.lift(x, y, share_type=BOOLEAN)
@@ -1240,6 +1248,7 @@ class ABY3(Protocol):
             [arg.dispatch_id for arg in args if hasattr(arg, "dispatch_id")]
         )
         func_name = "_{}_{}".format(base_name, suffix)
+
         if container is None:
             container = _THISMODULE
         func = getattr(container, func_name, None)
@@ -1888,7 +1897,6 @@ def _sub_public_private(prot, x, y):
 # negative helpers
 #
 
-
 def _negative_private(prot, x):
     assert isinstance(x, ABY3PrivateTensor), type(x)
 
@@ -2491,6 +2499,75 @@ def _shares_conversion_b_a_(prot, x):
         results.append(ABY3PrivateTensor(prot, res, x[0].is_scaled, ARITHMETIC))
     return results    
 
+def _inverse_sqrt_private(prot, x):
+    
+        with tf.name_scope("invert_sqrt"):
+            z = prot.A2B(x)
+            results = []
+            for i in range(0, prot.nbits):
+                results.append(prot.bit_extract(z, i))
+
+            for i in range(25, prot.nbits):
+                results[prot.nbits - i - 1] = prot.B_or(results[prot.nbits - i - 1], results[prot.nbits - i])
+
+            is_odd = prot.B_xor(results[prot.nbits - 2], results[prot.nbits - 3])
+
+            for i in range(4, prot.nbits+1):
+                is_odd = prot.B_xor(is_odd, results[prot.nbits - i])
+
+            tmp1 = prot.define_constant(np.ones(x.shape), share_type=ARITHMETIC, apply_scaling = False)
+            tmp2 = prot.define_constant(np.ones(x.shape), share_type=ARITHMETIC)
+            is_odd = prot.mul_AB(tmp2, is_odd)
+            #is_odd = prot.share_conversion_b_a(is_odd)
+
+            #results = prot.shares_conversion_b_a(results);
+            exp = prot.mul_AB(tmp1, results[0])
+        # exp = results[0]
+            b = (1 - exp)*(2**(prot.nbits-2)) + 1
+            exp = exp*tmp2
+            for i in range(1, prot.nbits-1):
+                tmp00 = prot.mul_AB(tmp1, results[i])
+                #tmp00 = results[i]#prot.share_conversion_b_a(results[i])
+                exp += tmp00*tmp2
+                b += (1-tmp00)*(2**(prot.nbits-2-i))
+            b = prot.truncate(b)
+            b = prot.truncate(b)
+            b = prot.truncate(x*b*4)
+            b = prot.truncate(b)
+
+            b = prot.polynomial(b, [2.223, -2.046, 0.82])
+            # exp = exp - prot.fixedpoint_config.precision_fractional
+            exp = prot.fixedpoint_config.precision_fractional - ((exp - prot.fixedpoint_config.precision_fractional)*0.5)
+
+            exp_b = prot.A2B(exp)
+
+            exp_bs = []
+            for i in range(prot.fixedpoint_config.precision_fractional, prot.fixedpoint_config.precision_fractional+5):
+                exp_bs.append(prot.bit_extract(exp_b, i))
+            
+            bs = []
+            for i in range(0, len(exp_bs)):
+                bs.append(prot.mul_AB(tmp2, exp_bs[i]))
+
+            
+            ibs = []
+            for i in range(0, len(exp_bs)):
+                ibs.append(1 - bs[i])
+
+            exp_sqrt = ((2**1) * bs[0] + ibs[0]);
+            for i in range(1, len(bs)):
+                exp_sqrt = exp_sqrt * ((2**(2**i)) * bs[i] + ibs[i])
+            
+            exp_sqrt = prot.truncate(exp_sqrt)
+
+            exp_sqrt_odd = exp_sqrt * (2**(0.5))
+
+            exp_sqrt = exp_sqrt *  ( is_odd) + exp_sqrt_odd * ( 1-is_odd)
+            assert z.share_type == BOOLEAN
+        
+            res111 = b * exp_sqrt
+            
+            return res111
 
 
 def _B_xor_private_public(prot: ABY3, x: ABY3PrivateTensor, y: ABY3PublicTensor):
@@ -3531,4 +3608,15 @@ def _reshape_private(prot: ABY3, tensor: ABY3PrivateTensor, axe):
             with tf.device(prot.servers[i].device_name):
                 results[i][0] = shares[i][0].reshape(axe)
                 results[i][1] = shares[i][1].reshape(axe)
+    return ABY3PrivateTensor(prot, results, tensor.is_scaled, tensor.share_type)
+
+
+def _diag_private(prot: ABY3, tensor: ABY3PrivateTensor):
+    shares = tensor.unwrapped
+    results = [[None] * 2 for _ in range(3)]
+    with tf.name_scope("diag"):
+        for i in range(3):
+            with tf.device(prot.servers[i].device_name):
+                results[i][0] = shares[i][0].diag()
+                results[i][1] = shares[i][1].diag()
     return ABY3PrivateTensor(prot, results, tensor.is_scaled, tensor.share_type)
