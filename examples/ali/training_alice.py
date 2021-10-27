@@ -79,7 +79,7 @@ def main(server):
   
   num_rows = 7000
   num_features = 32
-  num_epoch = 5
+  num_epoch = 21
   batch_size = 100
   num_batches = (num_rows // batch_size ) * num_epoch
 
