@@ -39,38 +39,27 @@ def main(server):
 
         x1 = tfe.define_private_input( data_owner_0.player_name, data_owner_0.random_vector)
         x2 = tfe.define_private_input( data_owner_1.player_name, data_owner_1.random_vector)
+        tmppp = np.logspace(-2, 3, 1000)
+        input =  tfe.define_private_variable(tmppp)
         
-        # res111 = tfe.inverse_sqrt(x1)
+        res111 = tfe.inverse_sqrt(input)
         
-        tmp = np.zeros([1280, 1280])
-        for i in range(len(tmp)):
-            indice = (i%10)*128+ int(i/10)
-            # tmp[i, indice] = 1
-            tmp[indice, i ] = 1
-        tmp1 = np.zeros([1280, 3])
-        for i in range(len(tmp1)):
-            tmp1[i, 0] = i
-            tmp1[i, 1] = i+1
-            tmp1[i, 2] = i+2
-        tmp1 = np.transpose(tmp1)
-        tmp2 = tmp1.dot(tmp)
-        for i in range(20):
-            print(tmp2[:,i])
+        truth = np.power(tmppp, -0.5)
 
-        # with tfe.Session() as sess:
-        #     sess.run(tfe.global_variables_initializer(),
-        #             tag='init')
-        #     xxx = []
-        #     #tmp = sess.run(res111.reveal(), tag='reveal')
-        #     T1 = time.time()
-        #     times = []
-        #     for i in range(0, 100):
-        #         tmp = sess.run(res111.reveal(), tag='reveal')
-        #     T2 = time.time()
-            
-        #     print(((T2-T1)))
-        #     print(tmp)
-            
+        with tfe.Session() as sess:
+            sess.run(tfe.global_variables_initializer(),
+                    tag='init')
+            xxx = []
+            #tmp = sess.run(res111.reveal(), tag='reveal')
+            T1 = time.time()
+            times = []
+            for i in range(0, 1):
+                tmp = sess.run(res111.reveal(), tag='reveal')
+            T2 = time.time()
+            print(tmp - truth)
+            print(np.linalg.norm(tmp - truth, ord = 1))
+            np.save('test_tf_error.npy', tmp - truth)
+            print(((T2-T1)))
     
   
 def start_master(cluster_config_file=None):

@@ -18,7 +18,7 @@ def test_mat():
         prot = ABY3(use_noninteractive_truncation=True)
         tfe.set_protocol(prot)
         x = tfe.define_private_variable(
-            tf.constant(np.ones((128, 4096))), share_type=ARITHMETIC
+            tf.constant([-1, 0.001,0.1, 0.2, 0.9, 2, 3]), share_type=ARITHMETIC
         )
         y = tfe.define_private_variable(
             tf.constant(4), share_type=ARITHMETIC
@@ -26,27 +26,32 @@ def test_mat():
         z = tfe.define_private_variable(
             tf.constant(np.ones((128, 10))), share_type=ARITHMETIC
         )
-        # z = tfe.reshape(x, [2,4])
-        store = []
-        for i in range(10):
-            store.append(tfe.diag(z[:,i]))
-        tmppp = tfe.concat(store, axis = 0)
-        gradients = tfe.matmul(tmppp, x)
-        print(np.shape(gradients))
-        gradients = tfe.reshape(gradients, [128, 40960])
-        gradients = gradients*gradients
-        norm_square = tfe.reduce_sum(gradients, axis=1)
-        norm_inverse = tfe.inverse_sqrt(norm_square)
-        C = 5
-        norm_inverse = norm_inverse * C
         z1 = tfe.polynomial_piecewise(
-            norm_inverse,
+            x,
             (0, 1),
-            ((0,), (0, 1), (1,)),  # use tuple because list is not hashable
+            ((1,), (0, 1), (1,)), 
         )
-        z1 = tfe.reshape(z1,[1,128])
-        gradients_clipped = tfe.matmul(z1, gradients)
-        gradients_clipped = tfe.reshape(gradients_clipped, [10, 4096])
+        # z = tfe.reshape(x, [2,4])
+        # store = []
+        # for i in range(10):
+        #     store.append(tfe.diag(z[:,i]))
+        # tmppp = tfe.concat(store, axis = 0)
+        # gradients = tfe.matmul(tmppp, x)
+        # print(np.shape(gradients))
+        # gradients = tfe.reshape(gradients, [128, 40960])
+        # gradients = gradients*gradients
+        # norm_square = tfe.reduce_sum(gradients, axis=1)
+        # norm_inverse = tfe.inverse_sqrt(norm_square)
+        # C = 5
+        # norm_inverse = norm_inverse * C
+        # z1 = tfe.polynomial_piecewise(
+        #     norm_inverse,
+        #     (0, 1),
+        #     ((0,), (0, 1), (1,)),  # use tuple because list is not hashable
+        # )
+        # z1 = tfe.reshape(z1,[1,128])
+        # gradients_clipped = tfe.matmul(z1, gradients)
+        # gradients_clipped = tfe.reshape(gradients_clipped, [10, 4096])
         # for i in range(10):
         #     tmp = z[:,i]
         #     tmp = tfe.reshape(tmp,[128,1])
@@ -69,8 +74,8 @@ def test_mat():
             sess.run(tfe.global_variables_initializer())
             print("start")
             T1 = time.time()
-            for i in range(10):
-                 result = sess.run(gradients_clipped.reveal())
+            for i in range(1):
+                 result = sess.run(z1.reveal())
             T2 = time.time()
             print((T2-T1)*1000)
             print(result)

@@ -1,2 +1,6 @@
 venv/
 examples/ali/mnist/
+examples/ali/raw_data/
+*.txt
+*.csv
+*.npy

@@ -82,9 +82,9 @@ fixed64 = FixedpointConfig(
 fixed64_ni = FixedpointConfig(
     scaling_base=2,
     precision_integral=10,
-    precision_fractional=13,
+    precision_fractional=20,
     matmul_threshold=256,
-    truncation_gap=20,
+    truncation_gap=13,
     use_noninteractive_truncation=True,
 )
 
